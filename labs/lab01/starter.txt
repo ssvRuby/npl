@@ -1,0 +1,39 @@
+
+#========= CLOUDERA =====================================================================
+yarn jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar \
+ -input advlog_in \
+ -output advlog_out \
+ -mapper  'python mapper.py' \
+ -reducer 'python test_reducer.py'
+
+
+#========== AMAZON   ====================================================================
+
+# Обновление файла ----------------------------------------------------------------------
+hadoop fs -ls /hdp/apps
+
+hadoop fs -rm /hdp/apps/2.5.3.0-37/mapreduce/mapreduce.tar.gz
+hadoop fs -put /usr/hdp/2.5.3.0-37/hadoop/mapreduce.tar.gz /hdp/apps/2.5.3.0-37/mapreduce/mapreduce.tar.gz
+#========================================================================================
+
+yarn jar /usr/hdp/2.5.3.0-37/hadoop-mapreduce/hadoop-streaming.jar \
+     -D mapred.reduce.tasks=1 \
+     -D mapreduce.job.maps=4 \
+     -D mapreduce.job.reduces=2 \
+     -files mapper.py,reducer.py \
+     -input /users/advertlog \
+     -output /users/adverts \
+     -mapper  'python mapper.py' \
+     -reducer 'python reducer.py'
+
+hadoop jar /usr/hdp/2.5.3.0-37/hadoop-mapreduce/hadoop-streaming.jar \
+     -D mapred.reduce.tasks=3 \
+     -input /users/advertlog \
+     -output /users/adverts \
+     -file  mapper.py \
+     -file reducer.py \
+     -mapper  "python2 mapper.py" \
+     -reducer "python2 reducer.py"
+
+
+

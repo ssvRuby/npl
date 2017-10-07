@@ -1,0 +1,52 @@
+wget -nv http://public-repo-1.hortonworks.com/ambari/ubuntu14/2.x/updates/2.4.2.0/ambari.list -O /etc/apt/sources.list.d/ambari.list
+
+apt-key adv --recv-keys --keyserver keyserver.ubuntu.com B9733A7A07513CAD
+
+apt-get update
+
+apt-cache showpkg ambari-server
+apt-cache showpkg ambari-agent
+apt-cache showpkg ambari-metrics-assembly
+
+
+apt-get install ambari-server
+
+# ====> Настройка Ambari
+ambari-server setup
+
+ambari-server start
+
+# ====> Проверка Ambari
+ps -ef | grep Ambari
+
+
+
+sudo cat /etc/passwd | grep hdfs
+
+#=========================================================================================================
+Пример:
+wget http://data.newprolab.com/public-newprolab-com/numbers.txt.lzma -O /tmp/numbers.txt.lzma
+lzma -d /tmp/numbers.txt.lzma
+
+hadoop fs -mkdir -p /users/numbers
+hadoop fs -put /tmp/numbers.txt /users/numbers/
+
+
+#=========================================================================================================
+hadoop fs -ls /hdp/apps
+
+hadoop fs -rm /hdp/apps/2.5.3.0-37/mapreduce/mapreduce.tar.gz
+hadoop fs -put /usr/hdp/2.5.3.0-37/hadoop/mapreduce.tar.gz /hdp/apps/2.5.3.0-37/mapreduce/mapreduce.tar.gz
+
+
+hadoop fs -rm -r -f /users/ && hadoop fs -mkdir -p /users/numbers
+#=========================================================================================================
+
+wget http://data.newprolab.com/public-newprolab-com/advert.log.lzma -O /tmp/advert.log.lzma
+wget http://data.newprolab.com/public-newprolab-com/advert.log.lzma -O /mnt/advert.log.lzma
+lzma -d /tmp/advert.log.lzma
+
+hadoop fs -mkdir -p /users/advertlog
+hadoop fs -put /mnt/advert.log /users/advertlog/
+
+hadoop fs -rm -r -f /users/adverts
