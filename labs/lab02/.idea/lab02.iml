@@ -8,6 +8,8 @@
     <orderEntry type="module" module-name="lab01" />
     <orderEntry type="module" module-name="project01" />
     <orderEntry type="module" module-name="lab03" />
+    <orderEntry type="module" module-name="lab03sa" />
+    <orderEntry type="module" module-name="code_trash" />
   </component>
   <component name="TestRunnerService">
     <option name="projectConfiguration" value="Nosetests" />

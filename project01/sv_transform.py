@@ -1,5 +1,19 @@
 from datetime import datetime
 from datetime import timedelta
+from urllib.parse import urlparse
+from urllib.parse import unquote
+
+
+
+def url2domain(url):
+
+    clear_url = ''
+    unquoted_url = urlparse(unquote(url))
+
+    if unquoted_url.scheme in ['http', 'https']:
+        clear_url = unquoted_url.netloc.replace('www.', '').strip()
+
+    return clear_url.lower()
 
 
 def guid_to_date(guid, check_returning_date=True):
