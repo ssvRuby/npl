@@ -42,12 +42,13 @@ train, test = read_datasets()
 # print(test.shape)
 # print('====================>')
 
-print(train["Survived"].value_counts())
-print(train["Survived"].value_counts(normalize=True))
-print('====================>')
-print(train["Survived"][train['Sex'] == 'male'].value_counts())
-print(train["Survived"][train['Sex'] == 'male'].value_counts(normalize=True))
+# print(train["Survived"].value_counts())
+# print(train["Survived"].value_counts(normalize=True))
+# print('====================>')
+# print(train["Survived"][train['Sex'] == 'male'].value_counts())
+# print(train["Survived"][train['Sex'] == 'male'].value_counts(normalize=True))
 
 # https://campus.datacamp.com/courses/kaggle-python-tutorial-on-machine-learning/getting-started-with-python?ex=5
 
+print(train.head(2))
 
