@@ -1,0 +1,643 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import warnings\n",
+    "warnings.simplefilter('ignore')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "from urllib import request as req\n",
+    "\n",
+    "data_dir = '/Users/ssv/newprolab/project01'\n",
+    "filename = 'gender_age_dataset.txt'\n",
+    "file_path = '/'.join([data_dir, filename])\n",
+    "url = 'http://data.newprolab.com/data-newprolab-com/project01/' + filename\n",
+    "\n",
+    "#req.urlretrieve(url, file_path)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import json\n",
+    "from urllib.parse import urlparse\n",
+    "from datetime import datetime\n",
+    "from tqdm import tqdm_notebook\n",
+    "import pickle"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "pd.set_option('display.max_columns', 200)\n",
+    "pd.set_option('display.max_rows', 200)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "df = pd.read_csv(file_path, sep='\\t')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "df['user_json'] = df['user_json'].apply(lambda x: json.loads(x))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "df['url_counts'] = df['user_json'].apply(lambda x: len(x['visits']))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#  Формирование столбца, содержащего массив распарсенных урлов, \n",
+    "#  тип ParseResult(scheme='http', netloc='zebra-zoya.ru', \n",
+    "#  path='/200028-chehol-organayzer-dlja-macbook-11-grid-it.html', \n",
+    "#  params='', query='utm_campaign=397720794&utm_content=397729344&utm_medium=cpc&utm_source=begun', fragment='')\n",
+    "\n",
+    "df['url_list'] = df['user_json'].apply(lambda x: [urlparse(x['url']) for x in x['visits']])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#  Формирование столбца, содержащего массив дат, полученных из timestamp, \n",
+    "#  тип datetime.datetime(2015, 3, 24, 10, 25, 44)\n",
+    "df['ts_list'] = df['user_json'].apply(lambda x: \\\n",
+    "                                       [datetime.fromtimestamp(int(float(str(x['timestamp'])[:10] + \\\n",
+    "                                                            '.' + str(x['timestamp'])[10:13]))) \\\n",
+    "                                        for x in x['visits']])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "# Выбор уникальных урлов из массива распарсенных урлов, ParseResult.netloc (str)\n",
+    "df['url_netloc'] = df['url_list'].apply(lambda x: list(set([y.scheme + '://' + y.netloc for y in x ])))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#========================================================"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.jupyter.widget-view+json": {
+       "model_id": "68bf50b91cf54dd6a7b163a48137ec63"
+      }
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Перекодировка урлов x.encode('idna').decode('idna') с очисткой от мусора \n",
+    "\n",
+    "i = 0\n",
+    "for items in tqdm_notebook(df['url_netloc']):    \n",
+    "    for netloc in items:\n",
+    "        try:\n",
+    "            netloc.encode('idna').decode('idna')\n",
+    "        except:           \n",
+    "            df['url_netloc'][i].remove(netloc)\n",
+    "            # print('netloc -- {} ==>'.format(i), netloc)\n",
+    "            netloc = ''\n",
+    "            continue     \n",
+    "    i += 1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import pickle\n",
+    "with open('url_for_scraping.pickle', 'wb') as file:\n",
+    "    pickle.dump(url_for_scraping, file)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "# with open('url_for_scraping.pickle', 'rb') as file:\n",
+    "#     url_for_scraping = pickle.load(file)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "df_med_keywords = pd.DataFrame()\n",
+    "df_med_keywords[['uid', 'url_netloc']] = df[['uid', 'url_netloc']]\n",
+    "df_med_keywords['raw_keywords'] = ''"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 572 µs, sys: 99 µs, total: 671 µs\n",
+      "Wall time: 585 µs\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style>\n",
+       "    .dataframe thead tr:only-child th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: left;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>uid</th>\n",
+       "      <th>url_netloc</th>\n",
+       "      <th>raw_keywords</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>d50192e5-c44e-4ae8-ae7a-7cfe67c8b777</td>\n",
+       "      <td>[http://news.yandex.ru, http://www.sotovik.ru,...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>d502331d-621e-4721-ada2-5d30b2c3801f</td>\n",
+       "      <td>[http://www.euroavtoprokat.ru, http://www.word...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>d50237ea-747e-48a2-ba46-d08e71dddfdb</td>\n",
+       "      <td>[http://cdn.etgdta.com, http://ru.oriflame.com...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>d502f29f-d57a-46bf-8703-1cb5f8dcdf03</td>\n",
+       "      <td>[http://translate-tattoo.ru, http://www.1obl.r...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>d503c3b2-a0c2-4f47-bb27-065058c73008</td>\n",
+       "      <td>[http://www.prommetizcomplect.ru, http://utro....</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>d5090ddf-5648-487e-9caa-5cd8de4c60a4</td>\n",
+       "      <td>[https://cfire.mail.ru, http://petrovka-beauty...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>d50bcef8-16ff-4e80-a9d5-9343698f4e7c</td>\n",
+       "      <td>[https://www.avito.ru, http://yandex.ru, http:...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>d50e23dc-0cbd-4883-bd6c-23ce65b511cc</td>\n",
+       "      <td>[http://www.re-store.ru, http://www.gazprom.ru...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>d50fdabb-4208-441b-ad35-bfa9c7a673ea</td>\n",
+       "      <td>[http://rusvesna.su, http://lifenews.ru, http:...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>d511b480-23a6-4820-b439-9009ee63c94d</td>\n",
+       "      <td>[http://ololo.fm, http://www.tvcok.ru, http://...</td>\n",
+       "      <td></td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                                    uid  \\\n",
+       "0  d50192e5-c44e-4ae8-ae7a-7cfe67c8b777   \n",
+       "1  d502331d-621e-4721-ada2-5d30b2c3801f   \n",
+       "2  d50237ea-747e-48a2-ba46-d08e71dddfdb   \n",
+       "3  d502f29f-d57a-46bf-8703-1cb5f8dcdf03   \n",
+       "4  d503c3b2-a0c2-4f47-bb27-065058c73008   \n",
+       "5  d5090ddf-5648-487e-9caa-5cd8de4c60a4   \n",
+       "6  d50bcef8-16ff-4e80-a9d5-9343698f4e7c   \n",
+       "7  d50e23dc-0cbd-4883-bd6c-23ce65b511cc   \n",
+       "8  d50fdabb-4208-441b-ad35-bfa9c7a673ea   \n",
+       "9  d511b480-23a6-4820-b439-9009ee63c94d   \n",
+       "\n",
+       "                                          url_netloc raw_keywords  \n",
+       "0  [http://news.yandex.ru, http://www.sotovik.ru,...               \n",
+       "1  [http://www.euroavtoprokat.ru, http://www.word...               \n",
+       "2  [http://cdn.etgdta.com, http://ru.oriflame.com...               \n",
+       "3  [http://translate-tattoo.ru, http://www.1obl.r...               \n",
+       "4  [http://www.prommetizcomplect.ru, http://utro....               \n",
+       "5  [https://cfire.mail.ru, http://petrovka-beauty...               \n",
+       "6  [https://www.avito.ru, http://yandex.ru, http:...               \n",
+       "7  [http://www.re-store.ru, http://www.gazprom.ru...               \n",
+       "8  [http://rusvesna.su, http://lifenews.ru, http:...               \n",
+       "9  [http://ololo.fm, http://www.tvcok.ru, http://...               "
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "df_med_keywords.head(10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.jupyter.widget-view+json": {
+       "model_id": "562b021bb2574112a57be2a7d2f7e161"
+      }
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "ename": "KeyError",
+     "evalue": "'content'",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mKeyError\u001b[0m                                  Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-14-76f89ad0885d>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[1;32m     14\u001b[0m         \u001b[0mtag\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mhtml\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfind\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m'meta'\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m{\u001b[0m\u001b[0;34m'name'\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m'description'\u001b[0m\u001b[0;34m}\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     15\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mtag\u001b[0m \u001b[0;34m!=\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 16\u001b[0;31m             \u001b[0mkeywords\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mappend\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mtag\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mattrs\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m'content'\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     17\u001b[0m         \u001b[0mtag\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mhtml\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfind\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m'meta'\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m{\u001b[0m\u001b[0;34m'name'\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m'keywords'\u001b[0m\u001b[0;34m}\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     18\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mtag\u001b[0m \u001b[0;34m!=\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mKeyError\u001b[0m: 'content'"
+     ]
+    }
+   ],
+   "source": [
+    "%time\n",
+    "from urllib.request import urlopen\n",
+    "from bs4 import BeautifulSoup\n",
+    "from tqdm import tqdm_notebook\n",
+    "\n",
+    "i = 0\n",
+    "for index, row in tqdm_notebook(df_med_keywords.iterrows()):\n",
+    "    keywords = []\n",
+    "    tag = ''\n",
+    "    for url in row['url_netloc']:\n",
+    "        try:\n",
+    "            html = BeautifulSoup(urlopen(url).read())       \n",
+    "            tag = html.find('meta', {'name':'description'})    \n",
+    "            if tag != None:\n",
+    "                keywords.append(tag.attrs['content'])\n",
+    "            tag = html.find('meta', {'name':'keywords'})    \n",
+    "            if tag != None:\n",
+    "                keywords.append(tag.attrs['content'])    \n",
+    "        except:\n",
+    "            continue\n",
+    "    \n",
+    "    df_med_keywords.loc[index]['raw_keywords'] = keywords\n",
+    "    i += 1\n",
+    "    if i == 1000 or index == 41137:\n",
+    "        i = 0\n",
+    "        filename = 'keywords_' + str(index) + '.pickle'\n",
+    "        with open(filename, 'wb') as file:\n",
+    "            pickle.dump(df_med_keywords, file)\n",
+    "            \n",
+    "with open('df_med_keywords.pickle', 'wb') as file:\n",
+    "    pickle.dump('df_med_keywords.pickle', file)            "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "print(df_med_keywords.loc[1]['raw_keywords'])\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "df_med_keywords.loc[0]['raw_keywords']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "df_med_keywords.loc[1]['raw_keywords']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/json": {
+       "cell": {
+        "!": "OSMagics",
+        "HTML": "Other",
+        "SVG": "Other",
+        "bash": "Other",
+        "capture": "ExecutionMagics",
+        "debug": "ExecutionMagics",
+        "file": "Other",
+        "html": "DisplayMagics",
+        "javascript": "DisplayMagics",
+        "js": "DisplayMagics",
+        "latex": "DisplayMagics",
+        "perl": "Other",
+        "prun": "ExecutionMagics",
+        "pypy": "Other",
+        "python": "Other",
+        "python2": "Other",
+        "python3": "Other",
+        "ruby": "Other",
+        "script": "ScriptMagics",
+        "sh": "Other",
+        "svg": "DisplayMagics",
+        "sx": "OSMagics",
+        "system": "OSMagics",
+        "time": "ExecutionMagics",
+        "timeit": "ExecutionMagics",
+        "writefile": "OSMagics"
+       },
+       "line": {
+        "alias": "OSMagics",
+        "alias_magic": "BasicMagics",
+        "autocall": "AutoMagics",
+        "automagic": "AutoMagics",
+        "autosave": "KernelMagics",
+        "bookmark": "OSMagics",
+        "cat": "Other",
+        "cd": "OSMagics",
+        "clear": "KernelMagics",
+        "colors": "BasicMagics",
+        "config": "ConfigMagics",
+        "connect_info": "KernelMagics",
+        "cp": "Other",
+        "debug": "ExecutionMagics",
+        "dhist": "OSMagics",
+        "dirs": "OSMagics",
+        "doctest_mode": "BasicMagics",
+        "ed": "Other",
+        "edit": "KernelMagics",
+        "env": "OSMagics",
+        "gui": "BasicMagics",
+        "hist": "Other",
+        "history": "HistoryMagics",
+        "killbgscripts": "ScriptMagics",
+        "ldir": "Other",
+        "less": "KernelMagics",
+        "lf": "Other",
+        "lk": "Other",
+        "ll": "Other",
+        "load": "CodeMagics",
+        "load_ext": "ExtensionMagics",
+        "loadpy": "CodeMagics",
+        "logoff": "LoggingMagics",
+        "logon": "LoggingMagics",
+        "logstart": "LoggingMagics",
+        "logstate": "LoggingMagics",
+        "logstop": "LoggingMagics",
+        "ls": "Other",
+        "lsmagic": "BasicMagics",
+        "lx": "Other",
+        "macro": "ExecutionMagics",
+        "magic": "BasicMagics",
+        "man": "KernelMagics",
+        "matplotlib": "PylabMagics",
+        "mkdir": "Other",
+        "more": "KernelMagics",
+        "mv": "Other",
+        "notebook": "BasicMagics",
+        "page": "BasicMagics",
+        "pastebin": "CodeMagics",
+        "pdb": "ExecutionMagics",
+        "pdef": "NamespaceMagics",
+        "pdoc": "NamespaceMagics",
+        "pfile": "NamespaceMagics",
+        "pinfo": "NamespaceMagics",
+        "pinfo2": "NamespaceMagics",
+        "popd": "OSMagics",
+        "pprint": "BasicMagics",
+        "precision": "BasicMagics",
+        "profile": "BasicMagics",
+        "prun": "ExecutionMagics",
+        "psearch": "NamespaceMagics",
+        "psource": "NamespaceMagics",
+        "pushd": "OSMagics",
+        "pwd": "OSMagics",
+        "pycat": "OSMagics",
+        "pylab": "PylabMagics",
+        "qtconsole": "KernelMagics",
+        "quickref": "BasicMagics",
+        "recall": "HistoryMagics",
+        "rehashx": "OSMagics",
+        "reload_ext": "ExtensionMagics",
+        "rep": "Other",
+        "rerun": "HistoryMagics",
+        "reset": "NamespaceMagics",
+        "reset_selective": "NamespaceMagics",
+        "rm": "Other",
+        "rmdir": "Other",
+        "run": "ExecutionMagics",
+        "save": "CodeMagics",
+        "sc": "OSMagics",
+        "set_env": "OSMagics",
+        "store": "StoreMagics",
+        "sx": "OSMagics",
+        "system": "OSMagics",
+        "tb": "ExecutionMagics",
+        "time": "ExecutionMagics",
+        "timeit": "ExecutionMagics",
+        "unalias": "OSMagics",
+        "unload_ext": "ExtensionMagics",
+        "who": "NamespaceMagics",
+        "who_ls": "NamespaceMagics",
+        "whos": "NamespaceMagics",
+        "xdel": "NamespaceMagics",
+        "xmode": "BasicMagics"
+       }
+      },
+      "text/plain": [
+       "Available line magics:\n",
+       "%alias  %alias_magic  %autocall  %automagic  %autosave  %bookmark  %cat  %cd  %clear  %colors  %config  %connect_info  %cp  %debug  %dhist  %dirs  %doctest_mode  %ed  %edit  %env  %gui  %hist  %history  %killbgscripts  %ldir  %less  %lf  %lk  %ll  %load  %load_ext  %loadpy  %logoff  %logon  %logstart  %logstate  %logstop  %ls  %lsmagic  %lx  %macro  %magic  %man  %matplotlib  %mkdir  %more  %mv  %notebook  %page  %pastebin  %pdb  %pdef  %pdoc  %pfile  %pinfo  %pinfo2  %popd  %pprint  %precision  %profile  %prun  %psearch  %psource  %pushd  %pwd  %pycat  %pylab  %qtconsole  %quickref  %recall  %rehashx  %reload_ext  %rep  %rerun  %reset  %reset_selective  %rm  %rmdir  %run  %save  %sc  %set_env  %store  %sx  %system  %tb  %time  %timeit  %unalias  %unload_ext  %who  %who_ls  %whos  %xdel  %xmode\n",
+       "\n",
+       "Available cell magics:\n",
+       "%%!  %%HTML  %%SVG  %%bash  %%capture  %%debug  %%file  %%html  %%javascript  %%js  %%latex  %%perl  %%prun  %%pypy  %%python  %%python2  %%python3  %%ruby  %%script  %%sh  %%svg  %%sx  %%system  %%time  %%timeit  %%writefile\n",
+       "\n",
+       "Automagic is ON, % prefix IS NOT needed for line magics."
+      ]
+     },
+     "execution_count": 18,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "lsmagic"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
